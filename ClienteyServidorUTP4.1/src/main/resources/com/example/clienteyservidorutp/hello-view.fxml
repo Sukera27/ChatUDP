@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.example.clienteyservidorutp.ChatController">
+    <TextArea fx:id="messageTextArea" prefHeight="300.0" wrapText="true" VBox.vgrow="ALWAYS" />
+    <TextField fx:id="inputTextField" promptText="Escribe un mensaje..." maxWidth="400.0" />
+    <Button fx:id="sendButton" text="Enviar" onAction="#sendMessage" />
+</VBox>
+
