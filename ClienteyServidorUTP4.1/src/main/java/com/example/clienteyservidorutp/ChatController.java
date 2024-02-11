@@ -5,6 +5,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -37,6 +38,7 @@ public class ChatController {
 
     @FXML
     private void initialize() {
+
         try {
 
             serverAddress = InetAddress.getByName("localhost");

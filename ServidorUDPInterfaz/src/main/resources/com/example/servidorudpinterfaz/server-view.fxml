@@ -7,13 +7,21 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
+<?import java.net.URL?>
 <VBox xmlns="http://javafx.com/javafx"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.servidorudpinterfaz.ServerController"
-      prefHeight="400.0" prefWidth="600.0">
+      prefHeight="400.0" prefWidth="600.0"
+      style="-fx-background-color: black;">
 
-    <TextArea fx:id="logTextArea" prefHeight="200.0" prefWidth="400.0" wrapText="true" editable="false"/>
+    <!-- Estilo para el TextArea -->
+    <stylesheets>
+        <URL value="@matrix_style.css"/>
+    </stylesheets>
+
+    <TextArea fx:id="logTextArea" prefHeight="400.0" prefWidth="400.0" wrapText="true" editable="false"
+              style="-fx-control-inner-background: black; -fx-text-fill: lime;"/>
     <!-- Agregué un ListView para mostrar los usuarios conectados -->
-    <ListView fx:id="userListView" prefHeight="200.0" prefWidth="400.0"/>
+
 
 </VBox>

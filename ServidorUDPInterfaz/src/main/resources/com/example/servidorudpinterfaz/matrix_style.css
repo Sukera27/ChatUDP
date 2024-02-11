@@ -1,0 +1,6 @@
+/* matrix_style.css */
+.text-area {
+    -fx-text-fill: lime; /* Color del texto verde */
+    -fx-font-family: "Courier New"; /* Fuente específica */
+}
+

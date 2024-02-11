@@ -156,8 +156,8 @@ public class ServerController {
             // Convirtiendo el nombre a cadena de texto.
             String combinedMessage  = new String(data, 0, receivePacket.getLength());
             String[] parts = combinedMessage.split("\\|");
-            String userName = parts[0];
-            String fileName = parts[1];
+            String userName = parts[1];
+            String fileName = parts[2];
 
             // Ruta donde se guardará la imagen.
             String savedImagePath = "C:\\Users\\rafa_\\Downloads\\DescargasServidor" + "\\" + fileName;
