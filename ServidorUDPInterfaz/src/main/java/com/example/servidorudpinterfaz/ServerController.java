@@ -4,19 +4,14 @@ import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.TextArea;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.io.*;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class ServerController {
@@ -24,10 +19,10 @@ public class ServerController {
     private static final int PORT = 5010;
     private DatagramSocket socket;
     private Set<String> registeredUsernames = new HashSet<>();
-    private ArrayList<Integer> users = new ArrayList<>();
+    private List<Integer> users = new ArrayList<>();
+    private List<InetAddress> address = new ArrayList<>();
     @FXML
     private TextArea logTextArea;
-    private InetAddress address;
 
     public void initialize() {
         try {
@@ -78,9 +73,11 @@ public class ServerController {
                     // Agrega el nombre de usuario a la lista de disponibles
                     registeredUsernames.add(username);
 
+                    InetAddress inetAddress = packet.getAddress();
                     int puertoOrigen = packet.getPort();
-                    if (!users.contains(puertoOrigen)) {
+                    if (!users.contains(puertoOrigen) || !address.contains(inetAddress)) {
                         users.add(puertoOrigen);
+                        address.add(inetAddress);
                     }
 
                     // Imprime en la consola la información del cliente.
@@ -92,13 +89,11 @@ public class ServerController {
                 }
 
             } else if (messageParts[0].equals("IMAGE")) {
-
                 // Si el mensaje es de tipo imagen, llamar al método receiveImage para manejarlo
                 receiveImage(packet, socket);
+            } else {
+                forwardTextMessage(packet);
             }
-
-
-            forwardTextMessage(packet);
         }
     }
 
@@ -172,8 +167,7 @@ public class ServerController {
 
             // Recibiendo el archivo.
             saveImage(outToFile, serverSocket);
-
-
+            forwardImagesToClients(f, userName);
 
         } catch (FileNotFoundException e) {
             // Lanzando una excepción de tiempo de ejecución en caso de no encontrar el archivo.
@@ -266,14 +260,153 @@ public class ServerController {
         }
     }
 
+    // Método para reenviar imágenes a los clientes conectados:
+    private void forwardImagesToClients(File imageFile, String userName) {
+        try {
+            // Creando el socket del cliente.
+            DatagramSocket clientSocket = new DatagramSocket();
+            String fileName = imageFile.getName();
+            // Combinando el nombre de usuario y el nombre del archivo.
+            String combinedMessage = "IMAGE|" + userName + "|" + fileName;
+            byte[] fileNameBytes = combinedMessage.getBytes();
 
+            // Bucle por cada cliente:
+            for (int i = 0; i < users.size(); i++) {
+                InetAddress clientAddress = address.get(i); // Cambia esto con la dirección correcta
+                int clientPort = users.get(i);
 
+                // Enviando el nombre del archivo al servidor.
+                DatagramPacket fileStatPacket = new DatagramPacket(fileNameBytes, fileNameBytes.length, clientAddress, clientPort);
+                clientSocket.send(fileStatPacket);
+                notification("Archivo enviado a " + clientAddress + " " + clientPort);
+                System.out.println("Archivo enviado a " + clientAddress + " " + clientPort);
 
+                // Leyendo el archivo y enviándolo al servidor.
+                byte[] fileByteArray = readFileToByteArray(imageFile);
+                sendFile(clientSocket, fileByteArray, clientAddress, clientPort);
+            }
 
+            // Cerrando el socket del cliente.
+            clientSocket.close();
+        } catch (Exception e) {
+            // Imprimiendo la traza de la excepción en caso de error.
+            notification("Error al reenviar imágenes a los clientes: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
+    // Logica para transformar imagen a bytes y enviarlo:
+    private void sendFile(DatagramSocket socket, byte[] fileByteArray, InetAddress address, int port) {
+        try {
+            notification("Enviando file to: " + address + " " + port);
+            System.out.println("Enviando file");
+            // Para ordenar.
+            int sequenceNumber = 0;
+            // Para ver si llegamos al final del archivo.
+            boolean flag;
+            // Para ver si el datagrama se recibió correctamente.
+            int ackSequence = 0;
 
+            for (int i = 0; i < fileByteArray.length; i = i + 1021) {
+                sequenceNumber += 1;
+                // Crear un mensaje
+                byte[] message = new byte[1024];
+                // Los primeros dos bytes de los datos son para control (integridad y orden del datagrama).
+                message[0] = (byte) (sequenceNumber >> 8);
+                message[1] = (byte) (sequenceNumber);
 
+                // ¿Hemos llegado al final del archivo?
+                if ((i + 1021) >= fileByteArray.length) {
+                    // Llegamos al final del archivo (último datagrama a enviar).
+                    flag = true;
+                    message[2] = (byte) (1);
+                } else {
+                    // No hemos llegado al final del archivo, seguimos enviando datagramas.
+                    flag = false;
+                    message[2] = (byte) (0);
+                }
 
+                if (!flag) {
+                    System.arraycopy(fileByteArray, i, message, 3, 1021);
+                } else {
+                    // Si es el último datagrama.
+                    System.arraycopy(fileByteArray, i, message, 3, fileByteArray.length - i);
+                }
 
+                // Los datos a enviar.
+                DatagramPacket sendPacket = new DatagramPacket(message, message.length, address, port);
+                socket.send(sendPacket);
+                // Enviando los datos.
+                notification("Sent: Sequence number = " + sequenceNumber);
+                System.out.println("Sent: Sequence number = " + sequenceNumber);
+
+                // ¿Se recibió el datagrama?
+                boolean ackRec;
+                while (true) {
+                    // Cree otro paquete para el reconocimiento de datagramas.
+                    byte[] ack = new byte[2];
+                    DatagramPacket backpack = new DatagramPacket(ack, ack.length);
+
+                    try {
+                        // Esperando que el servidor envíe el acuse de recibo.
+                        socket.setSoTimeout(50);
+                        socket.receive(backpack);
+                        // Calcular el número de secuencia.
+                        ackSequence = ((ack[0] & 0xff) << 8) + (ack[1] & 0xff);
+                        // Recibimos el ack.
+                        ackRec = true;
+                    } catch (SocketTimeoutException e) {
+                        // No recibimos un acuse de recibo.
+                        notification("Socket timed out waiting for ack");
+                        System.out.println("Socket timed out waiting for ack");
+                        ackRec = false;
+                    }
+
+                    if ((ackSequence == sequenceNumber) && (ackRec)) {
+                        // Si el paquete se recibió correctamente se puede enviar el siguiente paquete.
+                        notification("Ack received: Sequence Number = " + ackSequence);
+                        System.out.println("Ack received: Sequence Number = " + ackSequence);
+                        break;
+                    } else {
+                        // El paquete no fue recibido, por lo que lo reenviamos.
+                        socket.send(sendPacket);
+                        notification("Resending: Sequence Number = " + sequenceNumber);
+                        System.out.println("Resending: Sequence Number = " + sequenceNumber);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            notification("Error al enviar: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    // Método que toma un objeto de tipo File como parámetro:
+    public byte[] readFileToByteArray(File file) {
+        // Declara un objeto FileInputStream para leer bytes desde un archivo
+        FileInputStream fis;
+        // Crea un arreglo de bytes con la longitud del archivo
+        byte[] bArray = new byte[(int) file.length()];
+        try {
+            // Inicializa el objeto FileInputStream con el archivo proporcionado
+            fis = new FileInputStream(file);
+
+            // Lee los bytes desde el archivo y almacena la cantidad de bytes leídos en la variable "bytesRead"
+            int bytesRead = fis.read(bArray);
+
+            // Mientras haya más bytes por leer y estén disponibles en el flujo de entrada
+            while (bytesRead != -1 && fis.available() > 0) {
+                // Lee los bytes restantes y actualiza la variable "bytesRead"
+                bytesRead = fis.read(bArray, bytesRead, fis.available());
+            }
+
+            // Cierra el flujo de entrada después de leer todos los bytes
+            fis.close();
+        } catch (IOException ioExp) {
+            // En caso de una excepción de E/S (IOException), imprime la traza de la excepción
+            ioExp.printStackTrace();
+        }
+        // Devuelve el arreglo de bytes que contiene los datos del archivo
+        return bArray;
+    }
 
 }

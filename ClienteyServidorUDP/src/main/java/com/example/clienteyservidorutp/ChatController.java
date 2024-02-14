@@ -16,10 +16,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 
 public class ChatController {
@@ -107,10 +104,30 @@ public class ChatController {
 
                         appendMessage(sender + ": " + content, false); // Indicamos que el mensaje no fue enviado por el usuario local
 
-                    } else {
-                        // Si el mensaje no contiene el delimitador, mostrar el mensaje completo
-                        appendMessage(receivedMessage, false); // Indicamos que el mensaje no fue enviado por el usuario local
+                    } else if (receivedMessage.startsWith("IMAGE")) {
+                        byte [] data = receivedPacket.getData();
+                        // Converting the name to string
+                        String combinedMessage  = new String(data, 0, receivedPacket.getLength());
+                        String[] parts = combinedMessage.split("\\|");
+                        String receivedUserName = parts[1];
+                        String fileName = parts[2];
 
+                        // Se construye la ruta donde se guardará la imagen.
+                        String savedImagePath = "C:\\Users\\rafa_\\Downloads\\DescargasCliente" + "\\" + fileName;
+                        // Se crea el objeto File para representar el archivo de imagen.
+                        File f = new File(savedImagePath);
+                        // Se crea un FileOutputStream para escribir el contenido del archivo.
+                        FileOutputStream outToFile = new FileOutputStream(f);
+                        // Se llama a la función saveImage para recibir y guardar la imagen.
+                        saveImage(outToFile, LoginController.socket);
+                        // Si el mensaje es una imagen, llamar al método saveImage
+                        // Llamar al método appendImage para agregar la imagen al TextFlow
+                        appendImage(savedImagePath, false); // Indicamos que la imagen fue enviada por el usuario remoto
+
+
+                    } else {
+                        // Si el mensaje no contiene el delimitador y no es una imagen, mostrar el mensaje completo
+                        appendMessage(receivedMessage, false); // Indicamos que el mensaje no fue enviado por el usuario local
                     }
                 }
             }
@@ -118,6 +135,7 @@ public class ChatController {
             e.printStackTrace();
         }
     }
+
 
 
 
@@ -136,7 +154,7 @@ public class ChatController {
 
 
     // Método auxiliar para agregar imágenes al TextFlow
-    private void appendImage(Image image, boolean sentByUser) {
+    private void appendImage(String image, boolean sentByUser) {
         Platform.runLater(() -> {
             // Crear un Text para representar el texto "IMAGE username"
             Text imageText = new Text("IMAGE " + LoginController.username + "\n");
@@ -181,12 +199,6 @@ public class ChatController {
     // Logica para enviar imagen:
     private void sendImage(File imageFile) {
         try {
-            // Leer la imagen desde el archivo
-            Image image = new Image(imageFile.toURI().toString());
-
-            // Llamar al método appendImage para agregar la imagen al TextFlow
-            appendImage(image, true); // Indicamos que la imagen fue enviada por el usuario local
-
             // Crear un socket Datagram para la comunicación de red.
             DatagramSocket clientSocket = new DatagramSocket();
             // Obtener la dirección IP del servidor desde la clase UDPLoginController.
@@ -316,6 +328,84 @@ public class ChatController {
         return bArray;
     }
 
+    private static void saveImage(FileOutputStream outToFile, DatagramSocket socket) {
+        try {
+            // ¿Hemos llegado al final del archivo?
+            boolean flag;
+            // Orden de las secuencias.
+            int sequenceNumber;
+            // La última secuencia encontrada.
+            int foundLast = 0;
+
+            while (true) {
+                // Donde se almacena los datos del datagrama recibido.
+                byte[] message = new byte[1024];
+                // Donde almacenamos los datos que se escribirán en el archivo.
+                byte[] fileByteArray = new byte[1021];
+                // Recibir paquete y obtener los datos.
+                DatagramPacket receivedPacket = new DatagramPacket(message, message.length);
+                socket.receive(receivedPacket);
+                // Datos que se escribirán en el archivo.
+                message = receivedPacket.getData();
+                // Obtener puerto y dirección para enviar el acuse de recibo.
+                InetAddress address = receivedPacket.getAddress();
+                int port = receivedPacket.getPort();
+                // Obtener número de secuencia.
+                sequenceNumber = ((message[0] & 0xff) << 8) + (message[1] & 0xff);
+                // Verificar si llegamos al último datagrama (fin del archivo).
+                flag = (message[2] & 0xff) == 1;
+                // Si el número de secuencia es el último visto + 1, entonces es correcto.
+                // Obtenemos los datos del mensaje y escribimos el acuse de recibo de que se ha recibido correctamente.
+                if (sequenceNumber == (foundLast + 1)) {
+                    // Establecer el último número de secuencia como el que acabamos de recibir.
+                    foundLast = sequenceNumber;
+                    // Obtener datos del mensaje.
+                    System.arraycopy(message, 3, fileByteArray, 0, 1021);
+                    // Escribir los datos recuperados en el archivo e imprimir el número de secuencia recibido.
+                    outToFile.write(fileByteArray);
+                    //System.out.println("Received: Sequence number:" + foundLast);
+                    // Enviar acuse de recibo.
+                    sendAck(foundLast, socket, address, port);
+                } else {
+                    System.out.println("Expected sequence number: " + (foundLast + 1) + " but received " + sequenceNumber + ". DISCARDING");
+                    // Reenviar el acuse de recibo.
+                    sendAck(foundLast, socket, address, port);
+                }
+                // Verificar el último datagrama.
+                if (flag) {
+                    System.out.println("Image received");
+                    outToFile.close();
+                    break;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void sendAck(int foundLast, DatagramSocket socket, InetAddress address, int port) {
+        try {
+            // Se crea un array de bytes para almacenar el paquete de acuse de recibo (acknowledgement).
+            byte[] ackPacket = new byte[2];
+
+            // Se asignan los bytes correspondientes al número de secuencia del último paquete recibido.
+            ackPacket[0] = (byte) (foundLast >> 8);
+            ackPacket[1] = (byte) (foundLast);
+
+            // Se crea un DatagramPacket que contiene el paquete de acuse de recibo, la longitud del paquete,
+            // la dirección IP de destino y el puerto de destino.
+            DatagramPacket acknowledgement = new DatagramPacket(ackPacket, ackPacket.length, address, port);
+
+            // Se envía el paquete de acuse de recibo a través del socket.
+            socket.send(acknowledgement);
+
+            // Se imprime un mensaje (comentado) indicando el número de secuencia enviado en el acuse de recibo.
+            System.out.println("Sent ack: Sequence Number = " + foundLast);
+        } catch (Exception e) {
+            // Se imprime la traza de la excepción en caso de error durante el envío del acuse de recibo.
+            e.printStackTrace();
+        }
+    }
 
 
 
