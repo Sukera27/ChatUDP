@@ -16,6 +16,7 @@ import javafx.scene.text.TextAlignment;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -53,12 +54,12 @@ public class ChatController {
         try {
 
             serverAddress = InetAddress.getByName("localhost");
-
-
             // Iniciar hilo para recibir mensajes
             Thread receiveThread = new Thread(this::receiveMessage);
             receiveThread.setDaemon(true);
             receiveThread.start();
+
+
         } catch (  UnknownHostException e) {
             throw new RuntimeException(e);
         }
@@ -314,6 +315,7 @@ public class ChatController {
         // Devuelve el arreglo de bytes que contiene los datos del archivo
         return bArray;
     }
+
 
 
 

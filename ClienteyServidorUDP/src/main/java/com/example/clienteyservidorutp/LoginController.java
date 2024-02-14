@@ -6,6 +6,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
@@ -22,6 +23,10 @@ public class LoginController {
 
     @FXML
     private Button button;
+
+    @FXML
+    private Label errorMessageLabel;
+
 
     public static DatagramSocket socket;
 
@@ -67,20 +72,22 @@ public class LoginController {
             String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
             if (response.equals("USERNAME_AVAILABLE")) {
                 LoginController.username = username;
-
                 return true;
             } else {
                 // Muestra un mensaje al usuario indicando que el nombre no está disponible.
-                System.out.println("El nombre de usuario '" + username + "' no está disponible. Introduce otro nombre.");
+                errorMessageLabel.setText("El nombre de usuario '" + username + "' no está disponible.");
+                errorMessageLabel.setVisible(true); // Mostrar el mensaje de error
                 return false;
             }
         } catch (IOException e) {
             // Muestra un mensaje al usuario indicando que ha ocurrido un error.
-            System.out.println("Error al comunicarse con el servidor. Inténtalo de nuevo más tarde.");
+            errorMessageLabel.setText("Error al comunicarse con el servidor. Inténtalo de nuevo más tarde.");
+            errorMessageLabel.setVisible(true); // Mostrar el mensaje de error
             e.printStackTrace();
             return false;
         }
     }
+
 
 
     private void chatView(String user){

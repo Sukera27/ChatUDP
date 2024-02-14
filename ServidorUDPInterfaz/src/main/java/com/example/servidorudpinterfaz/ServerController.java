@@ -92,6 +92,7 @@ public class ServerController {
                 }
 
             } else if (messageParts[0].equals("IMAGE")) {
+
                 // Si el mensaje es de tipo imagen, llamar al método receiveImage para manejarlo
                 receiveImage(packet, socket);
             }
@@ -104,6 +105,7 @@ public class ServerController {
     private void notification(String message) {
         Platform.runLater(() -> logTextArea.appendText(message + "\n"));
     }
+
 
 
 
@@ -123,6 +125,8 @@ public class ServerController {
             }
         }
     }
+
+
 
 
     // Método para enviar una respuesta a un cliente a través de un socket UDP:

@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.TextFlow?>
 <?import javafx.scene.control.TextField?>
@@ -5,9 +7,16 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.image.Image?>
+<?import javafx.geometry.Insets?>
 <VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.clienteyservidorutp.ChatController"
       style="-fx-background-color: #222222;">
+
+    <!-- Añadir relleno alrededor de los elementos internos -->
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
     <TextFlow fx:id="messageTextFlow" prefHeight="300.0" prefWidth="400.0" style="-fx-background-color: #333333;" />
     <HBox spacing="10">
         <TextField fx:id="inputTextField" promptText="Escribe un mensaje..." maxWidth="400.0" HBox.hgrow="ALWAYS" />
