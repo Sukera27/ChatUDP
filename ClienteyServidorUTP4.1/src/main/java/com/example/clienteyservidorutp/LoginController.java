@@ -34,7 +34,7 @@ public class LoginController {
 
     public void initialize() {
         try {
-            socket = new DatagramSocket();
+            socket = new DatagramSocket(6011);
         } catch (SocketException e) {
             // Manejar el error de inicialización del socket
             e.printStackTrace();

@@ -1,5 +1,5 @@
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.text.TextFlow?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.layout.HBox?>
@@ -8,7 +8,7 @@
 <VBox alignment="CENTER" spacing="20.0" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.example.clienteyservidorutp.ChatController"
       style="-fx-background-color: #222222;">
-    <TextArea fx:id="messageTextArea" prefHeight="300.0" wrapText="true" VBox.vgrow="ALWAYS" />
+    <TextFlow fx:id="messageTextFlow" prefHeight="300.0" prefWidth="400.0" style="-fx-background-color: #333333;" />
     <HBox spacing="10">
         <TextField fx:id="inputTextField" promptText="Escribe un mensaje..." maxWidth="400.0" HBox.hgrow="ALWAYS" />
         <Button fx:id="sendButton" text="Enviar" style="-fx-font-size: 10;" onAction="#sendMessage">

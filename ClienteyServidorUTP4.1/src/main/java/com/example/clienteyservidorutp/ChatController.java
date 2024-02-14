@@ -2,10 +2,18 @@ package com.example.clienteyservidorutp;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextAlignment;
+import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 
 import java.io.File;
@@ -16,6 +24,9 @@ import java.net.*;
 public class ChatController {
     @FXML
     private TextArea messageTextArea;
+
+    @FXML
+    private TextFlow messageTextFlow;
 
     @FXML
     private TextField inputTextField;
@@ -66,7 +77,7 @@ public class ChatController {
         try {
             LoginController.socket.send(sendPacket);
             // Mostrar el mensaje en el TextArea
-            messageTextArea.appendText( message + "\n");
+            appendMessage(message, true); // Indicamos que el mensaje fue enviado por el usuario local
 
             // Limpiar el TextField después de enviar el mensaje
             inputTextField.clear();
@@ -93,14 +104,12 @@ public class ChatController {
                         String sender = parts[0]; // Nombre de usuario
                         String content = parts[1]; // Contenido del mensaje
 
-                        Platform.runLater(() -> {
-                            messageTextArea.appendText(sender + ": " + content + "\n");
-                        });
+                        appendMessage(sender + ": " + content, false); // Indicamos que el mensaje no fue enviado por el usuario local
+
                     } else {
                         // Si el mensaje no contiene el delimitador, mostrar el mensaje completo
-                        Platform.runLater(() -> {
-                            messageTextArea.appendText(receivedMessage + "\n");
-                        });
+                        appendMessage(receivedMessage, false); // Indicamos que el mensaje no fue enviado por el usuario local
+
                     }
                 }
             }
@@ -108,6 +117,45 @@ public class ChatController {
             e.printStackTrace();
         }
     }
+
+
+
+    // Método auxiliar para agregar mensajes al TextFlow con un estilo específico
+    private void appendMessage(String message, boolean sentByUser) {
+        Platform.runLater(() -> {
+            Text text = new Text(message + "\n");
+            if (message.startsWith("IMAGE")) {
+                text.setFill(Color.TRANSPARENT); // Establecer el color del texto como transparente para el texto "IMAGE username"
+            } else {
+                text.setFill(sentByUser ? Color.GREEN : Color.GRAY); // Establecer el color de la fuente según el remitente
+            }
+            messageTextFlow.getChildren().add(text);
+        });
+    }
+
+
+    // Método auxiliar para agregar imágenes al TextFlow
+    private void appendImage(Image image, boolean sentByUser) {
+        Platform.runLater(() -> {
+            // Crear un Text para representar el texto "IMAGE username"
+            Text imageText = new Text("IMAGE " + LoginController.username + "\n");
+            imageText.setFill(Color.TRANSPARENT); // Establecer el color del texto como transparente
+
+            // Crear un ImageView para la imagen
+            ImageView imageView = new ImageView(image);
+            imageView.setFitWidth(100); // Ajustar el ancho de la imagen
+            imageView.setPreserveRatio(true); // Mantener la relación de aspecto de la imagen
+
+            // Crear un contenedor HBox para la imagen y el texto
+            HBox imageBox = new HBox(imageText, imageView);
+            imageBox.setAlignment(sentByUser ? Pos.CENTER_RIGHT : Pos.CENTER_LEFT);
+
+            messageTextFlow.getChildren().add(imageBox);
+        });
+    }
+
+
+
     // Método para enviar imagen:
     @FXML
     private void sendImageButton() {
@@ -132,6 +180,12 @@ public class ChatController {
     // Logica para enviar imagen:
     private void sendImage(File imageFile) {
         try {
+            // Leer la imagen desde el archivo
+            Image image = new Image(imageFile.toURI().toString());
+
+            // Llamar al método appendImage para agregar la imagen al TextFlow
+            appendImage(image, true); // Indicamos que la imagen fue enviada por el usuario local
+
             // Crear un socket Datagram para la comunicación de red.
             DatagramSocket clientSocket = new DatagramSocket();
             // Obtener la dirección IP del servidor desde la clase UDPLoginController.
